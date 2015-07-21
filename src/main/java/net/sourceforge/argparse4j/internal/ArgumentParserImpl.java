@@ -80,6 +80,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
     private PrefixPattern prefixPattern_;
     private PrefixPattern fromFilePrefixPattern_;
     private boolean defaultHelp_ = false;
+    private boolean deprecatedHelp_ = false;
     private boolean negNumFlag_ = false;
     private TextWidthCounter textWidthCounter_;
     private ResourceBundle resourceBundle = ResourceBundle.getBundle(this
@@ -147,7 +148,8 @@ public final class ArgumentParserImpl implements ArgumentParser {
 
     public ArgumentImpl addArgument(ArgumentGroupImpl group,
             String... nameOrFlags) {
-        ArgumentImpl arg = new ArgumentImpl(prefixPattern_, group, nameOrFlags);
+        ArgumentImpl arg = new ArgumentImpl(prefixPattern_, group, this,
+                nameOrFlags);
         if (arg.isOptionalArgument()) {
             for (String flag : arg.getFlags()) {
                 ArgumentImpl another = optargIndex_.get(flag);
@@ -401,7 +403,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
             opts.add(command_);
         }
         for (ArgumentImpl arg : optargs_) {
-            if (arg.getHelpControl() != Arguments.SUPPRESS
+            if (!arg.isHelpSuppressed()
                     && (arg.getArgumentGroup() == null || !arg
                             .getArgumentGroup().isMutex())) {
                 opts.add(arg.formatShortSyntax());
@@ -432,7 +434,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
             }
         }
         for (ArgumentImpl arg : posargs_) {
-            if (arg.getHelpControl() != Arguments.SUPPRESS) {
+            if (!arg.isHelpSuppressed()) {
                 opts.add(arg.formatShortSyntax());
             }
         }
@@ -455,7 +457,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
             Collection<ArgumentImpl> args) {
         ArrayList<ArgumentImpl> res = new ArrayList<ArgumentImpl>();
         for (ArgumentImpl arg : args) {
-            if (arg.getHelpControl() != Arguments.SUPPRESS) {
+            if (!arg.isHelpSuppressed()) {
                 res.add(arg);
             }
         }
@@ -482,7 +484,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
             opts.add(parser.command_);
         }
         for (ArgumentImpl arg : parser.optargs_) {
-            if (arg.getHelpControl() != Arguments.SUPPRESS
+            if (!arg.isHelpSuppressed()
                     && arg.isRequired()
                     && (arg.getArgumentGroup() == null || !arg
                             .getArgumentGroup().isMutex())) {
@@ -517,7 +519,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
         }
 
         for (ArgumentImpl arg : parser.posargs_) {
-            if (arg.getHelpControl() != Arguments.SUPPRESS) {
+            if (!arg.isHelpSuppressed()) {
                 opts.add(arg.formatShortSyntax());
             }
         }
@@ -1273,7 +1275,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
             if (group.isMutex() && group.isRequired() && used[i] == null) {
                 StringBuilder sb = new StringBuilder();
                 for (ArgumentImpl arg : group.getArgs()) {
-                    if (arg.getHelpControl() != Arguments.SUPPRESS) {
+                    if (!arg.isHelpSuppressed()) {
                         sb.append(arg.textualName()).append(" ");
                     }
                 }
@@ -1573,5 +1575,39 @@ public final class ArgumentParserImpl implements ArgumentParser {
      */
     public ArgumentParserImpl getMainParser() {
         return mainParser_;
+    }
+
+    public void addDeprecatedAlias(ArgumentImpl arg, String[] flagAliases) {
+        for (String flag : flagAliases) {
+            if (!prefixPattern_.match(flag)) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                TextHelper.LOCALE_ROOT,
+                                "invalid option string '%s': must starti wht a character '%s'",
+                                flag, prefixPattern_.getPrefixChars()));
+            }
+            ArgumentImpl another = optargIndex_.get(flag);
+            if (another != null) {
+                // TODO No conflict handler ATM
+                throw new IllegalArgumentException(String.format(
+                        TextHelper.LOCALE_ROOT,
+                        "argument %s: conflicting option string(s): %s", flag,
+                        another.textualName()));
+            }
+            if (NEG_NUM_PATTERN.matcher(flag).matches()) {
+                negNumFlag_ = true;
+            }
+            optargIndex_.put(flag, arg);
+        }
+    }
+
+    @Override
+    public ArgumentParser deprecatedHelp(boolean deprecatedHelp) {
+        deprecatedHelp_ = deprecatedHelp;
+        return this;
+    }
+
+    public boolean isDeprecatedHelp() {
+        return deprecatedHelp_;
     }
 }

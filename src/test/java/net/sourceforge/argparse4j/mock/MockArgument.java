@@ -151,4 +151,16 @@ public class MockArgument implements Argument {
     public FeatureControl getHelpControl() {
         return null;
     }
+
+    @Override
+    public Argument deprecated(boolean deprecated) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Argument deprecatedAliases(String... flagAliases) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -66,17 +67,28 @@ public final class ArgumentImpl implements Argument {
     private int maxNumArg_ = -1;
     private String help_ = "";
     private ArgumentGroupImpl argumentGroup_;
+    private ArgumentParserImpl parser_;
+    private boolean deprecated_;
+    private List<String> deprecatedAliases_ = new ArrayList<String>();
 
+    /**
+     * Only used for unit tests
+     * 
+     * @param prefixPattern
+     * @param nameOrFlags
+     */
     public ArgumentImpl(PrefixPattern prefixPattern, String... nameOrFlags) {
-        this(prefixPattern, null, nameOrFlags);
+        this(prefixPattern, null, null, nameOrFlags);
     }
 
     public ArgumentImpl(PrefixPattern prefixPattern,
-            ArgumentGroupImpl argumentGroup, String... nameOrFlags) {
+            ArgumentGroupImpl argumentGroup, ArgumentParserImpl parser,
+            String... nameOrFlags) {
         if (nameOrFlags.length == 0) {
             throw new IllegalArgumentException("no nameOrFlags was specified");
         }
         argumentGroup_ = argumentGroup;
+        parser_ = parser;
         if (nameOrFlags.length == 1 && !prefixPattern.match(nameOrFlags[0])) {
             if (argumentGroup_ != null && argumentGroup_.isMutex()) {
                 throw new IllegalArgumentException(
@@ -211,57 +223,70 @@ public final class ArgumentImpl implements Argument {
         return sb.toString();
     }
 
-    private String formatHelpTitle() {
-        if (isOptionalArgument()) {
-            String mv = formatMetavar();
-            StringBuilder sb = new StringBuilder();
+    private String formatOptionalArgumentHelpTitle(String... flags) {
+        String mv = formatMetavar();
+        StringBuilder sb = new StringBuilder();
 
-            if(ArgumentParsers.isSingleMetavar()) {
-                for (String flag : flags_) {
-                    if(sb.length() > 0) {
-                        sb.append(", ");
-                    }
-                    sb.append(flag);
+        if (ArgumentParsers.isSingleMetavar()) {
+            for (String flag : flags) {
+                if (sb.length() > 0) {
+                    sb.append(", ");
                 }
+                sb.append(flag);
+            }
+            if (!mv.isEmpty()) {
+                sb.append(" ").append(mv);
+            }
+        } else {
+            for (String flag : flags) {
+                sb.append(flag);
                 if (!mv.isEmpty()) {
                     sb.append(" ").append(mv);
                 }
-            } else {
-                for (String flag : flags_) {
-                    sb.append(flag);
-                    if (!mv.isEmpty()) {
-                        sb.append(" ").append(mv);
-                    }
-                    sb.append(", ");
-                }
-                if (sb.length() > 2) {
-                    sb.delete(sb.length() - 2, sb.length());
-                }
+                sb.append(", ");
             }
-            return sb.toString();
-        } else {
-            return resolveMetavar()[0];
+            if (sb.length() > 2) {
+                sb.delete(sb.length() - 2, sb.length());
+            }
         }
+        return sb.toString();
+    }
+
+    private String formatHelpTitle() {
+        if (isOptionalArgument()) {
+            return formatOptionalArgumentHelpTitle(flags_);
+        }
+        return resolveMetavar()[0];
     }
 
     public void printHelp(PrintWriter writer, boolean defaultHelp,
             TextWidthCounter textWidthCounter, int width) {
-        if (helpControl_ == Arguments.SUPPRESS) {
+        if (helpControl_ == Arguments.SUPPRESS
+                || (deprecated_ && !parser_.isDeprecatedHelp())) {
             return;
         }
-        String help;
+        StringBuilder sb = new StringBuilder();
+        if (deprecated_) {
+            sb.append("(deprecated)");
+            if (!help_.isEmpty()) {
+                sb.append("  ");
+            }
+        }
+        sb.append(help_);
         if (defaultHelp && default_ != null) {
-            StringBuilder sb = new StringBuilder(help_);
             if (!help_.isEmpty()) {
                 sb.append(" ");
             }
             sb.append("(default: ").append(default_.toString()).append(")");
-            help = sb.toString();
-        } else {
-            help = help_;
         }
-        TextHelper.printHelp(writer, formatHelpTitle(), help, textWidthCounter,
-                width);
+        TextHelper.printHelp(writer, formatHelpTitle(), sb.toString(),
+                textWidthCounter, width);
+        if (parser_.isDeprecatedHelp() && !deprecatedAliases_.isEmpty()) {
+            TextHelper.printHelp(writer,
+                    formatOptionalArgumentHelpTitle(deprecatedAliases_
+                            .toArray(new String[0])), "deprecated in favor of "
+                            + flags_[0], textWidthCounter, width);
+        }
     }
 
     public Object convert(ArgumentParserImpl parser, String value)
@@ -384,6 +409,11 @@ public final class ArgumentImpl implements Argument {
 
     @Override
     public ArgumentImpl required(boolean required) {
+        if (deprecated_) {
+            throw new IllegalArgumentException(
+                    "deprecated arguments cannot be required");
+        }
+
         required_ = required;
         return this;
     }
@@ -537,5 +567,41 @@ public final class ArgumentImpl implements Argument {
 
     public String[] getFlags() {
         return flags_;
+    }
+
+    @Override
+    public Argument deprecated(boolean deprecated) {
+        checkDeprecationRequirements();
+        deprecated_ = deprecated;
+        return this;
+    }
+
+    @Override
+    public Argument deprecatedAliases(String... flagAliases) {
+        checkDeprecationRequirements();
+        parser_.addDeprecatedAlias(this, flagAliases);
+        for (String flag : flagAliases) {
+            deprecatedAliases_.add(flag);
+        }
+        return this;
+    }
+
+    private void checkDeprecationRequirements() {
+        if (!isOptionalArgument()) {
+            throw new IllegalArgumentException(
+                    "only optional arguments can have alises");
+        }
+        if (required_) {
+            throw new IllegalArgumentException(
+                    "deprecated arguments cannot be required");
+        }
+    }
+
+    /**
+     * @return Returns true if help message is suppressed, without taking into
+     *         account of {@link ArgumentParserImpl#deprecatedHelp(boolean)}.
+     */
+    public boolean isHelpSuppressed() {
+        return helpControl_ == Arguments.SUPPRESS || deprecated_;
     }
 }

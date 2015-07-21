@@ -32,6 +32,7 @@ import net.sourceforge.argparse4j.helper.TextHelper;
 import net.sourceforge.argparse4j.helper.TextWidthCounter;
 import net.sourceforge.argparse4j.inf.Argument;
 import net.sourceforge.argparse4j.inf.ArgumentGroup;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.MutuallyExclusiveGroup;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -270,5 +271,10 @@ public final class SubparserImpl implements Subparser {
 
     public String getCommand() {
         return parser_.getCommand();
+    }
+
+    @Override
+    public ArgumentParser deprecatedHelp(boolean deprecatedHelp) {
+        return parser_.deprecatedHelp(deprecatedHelp);
     }
 }
