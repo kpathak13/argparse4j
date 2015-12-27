@@ -438,6 +438,7 @@ public interface ArgumentParser {
      * @param unknown
      *            Output variable to store unrecognized arguments, or null
      * @return {@link Namespace} object.
+     * @since 0.7.0
      */
     Namespace parseKnownArgsOrFail(String args[], List<String> unknown);
 
@@ -455,6 +456,7 @@ public interface ArgumentParser {
      * @return {@link Namespace} object.
      * @throws ArgumentParserException
      *             If an error occurred.
+     * @since 0.7.0
      */
     Namespace parseKnownArgs(String args[], List<String> unknown)
             throws ArgumentParserException;
@@ -474,6 +476,7 @@ public interface ArgumentParser {
      *            Map object to store attributes.
      * @throws ArgumentParserException
      *             If an error occurred.
+     * @since 0.7.0
      */
     void parseKnownArgs(String[] args, List<String> unknown,
             Map<String, Object> attrs) throws ArgumentParserException;
@@ -493,6 +496,7 @@ public interface ArgumentParser {
      *            Object to store attributes.
      * @throws ArgumentParserException
      *             If an error occurred.
+     * @since 0.7.0
      */
     void parseKnownArgs(String[] args, List<String> unknown, Object userData)
             throws ArgumentParserException;
@@ -514,6 +518,7 @@ public interface ArgumentParser {
      *            Object to store attributes.
      * @throws ArgumentParserException
      *             If an error occurred.
+     * @since 0.7.0
      */
     void parseKnownArgs(String[] args, List<String> unknown,
             Map<String, Object> attrs, Object userData)

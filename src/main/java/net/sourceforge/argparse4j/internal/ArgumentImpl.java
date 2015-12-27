@@ -44,6 +44,7 @@ import net.sourceforge.argparse4j.inf.ArgumentChoice;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.ArgumentType;
 import net.sourceforge.argparse4j.inf.FeatureControl;
+import net.sourceforge.argparse4j.inf.MetavarInference;
 
 /**
  * <strong>The application code must not use this class directly.</strong>
@@ -181,16 +182,26 @@ public final class ArgumentImpl implements Argument {
 
     public String[] resolveMetavar() {
         if (metavar_ == null) {
-            String[] metavar = new String[1];
             if (choice_ == null) {
-                metavar[0] = isOptionalArgument() ? dest_.toUpperCase() : dest_;
-            } else {
-                metavar[0] = choice_.textualFormat();
+                if (type_ instanceof MetavarInference) {
+                    String[] metavar = ((MetavarInference) type_)
+                            .inferMetavar();
+                    if (metavar != null) {
+                        return metavar;
+                    }
+                }
+
+                if (isOptionalArgument()) {
+                    return new String[] { dest_.toUpperCase() };
+                }
+
+                return new String[] { dest_ };
             }
-            return metavar;
-        } else {
-            return metavar_;
+
+            return new String[] { choice_.textualFormat() };
         }
+
+        return metavar_;
     }
 
     public String formatMetavar() {

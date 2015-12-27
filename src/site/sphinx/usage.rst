@@ -1131,6 +1131,80 @@ is converted to its wrapped type counterpart. For example, if
 ``int.class`` is given, it is automatically converted to
 ``Integer.class``.
 
+Passing ``Boolean.class`` to |Argument.type| has a caveat.  Since it
+relies on ``Boolean.valueOf`` method, any string which matches "true"
+in case-insensitive fashion is converted to ``Boolean.TRUE``, and
+other strings are converted to ``Boolean.FALSE``::
+
+    public static void main(String[] args) {
+        ArgumentParser parser = ArgumentParsers.newArgumentParser("prog")
+                .defaultHelp(true);
+        parser.addArgument("-f").type(Boolean.class);
+
+        Namespace res = parser.parseArgsOrFail(args);
+        System.out.printf("f=%b\n", res.get("f"));
+    }
+
+.. code-block:: console
+
+    $ java Demo -f TRue
+    f=true
+    $ java Demo -f foo
+    f=false
+
+If more strict boolean conversion is desirable, use
+:javadocfunc:`impl.Arguments.booleanType()`.  It only allows input
+string ``true`` as true value, and ``false`` as false value.  Otherwise,
+reports error::
+
+    public static void main(String[] args) {
+        ArgumentParser parser = ArgumentParsers.newArgumentParser("prog")
+                .defaultHelp(true);
+        parser.addArgument("-f").type(Arguments.booleanType());
+
+        Namespace res = parser.parseArgsOrFail(args);
+        System.out.printf("f=%b\n", res.get("f"));
+    }
+
+
+.. code-block:: console
+
+    $ java Demo -f true
+    f=true
+    $ java Demo -f TRue
+    usage: prog [-h] [-f {true,false}]
+    prog: error: argument  -f:  could  not  convert  'TRue'  (choose from {true,
+    false})
+    $ java Demo -f foo
+    usage: prog [-h] [-f {true,false}]
+    prog: error: argument  -f:  could  not  convert  'foo'  (choose  from {true,
+    false})
+
+If application wants to change the valid input strings which can be
+converted to true/false values, use
+:javadocfunc:`impl.Arguments.booleanType(java.lang.String,java.lang.String)`.
+For example, to use ``yes``, and ``no`` as true and false values
+respectively instead of ``true`` and ``false``::
+
+    public static void main(String[] args) {
+        ArgumentParser parser = ArgumentParsers.newArgumentParser("prog")
+                .defaultHelp(true);
+        parser.addArgument("-f").type(Arguments.booleanType("yes", "no"));
+
+        Namespace res = parser.parseArgsOrFail(args);
+        System.out.printf("f=%b\n", res.get("f"));
+    }
+
+.. code-block:: console
+
+    $ java Demo -f yes
+    f=true
+    $ java Demo -f no
+    f=false
+    $ java Demo -f true
+    usage: prog [-h] [-f {yes,no}]
+    prog: error: argument -f: could not convert 'true' (choose from {yes,no})
+
 The |Argument.type| can accept enums.  Since enums have limited number
 of members, type conversion effectively acts like a choice from
 members. For example::
@@ -1165,10 +1239,10 @@ members. For example::
       -h, --help             show this help message and exit
       -x X
 
-To show available enum values in help message, use
-|Argument.choices|::
+The available enum values are automatically used as metavar, if
+metavar and choices are not explicitly set by application::
 
-    parser.addArgument("-x").type(Enums.class).choices(Enums.values());
+    parser.addArgument("-x").type(Enums.class);
 
 .. code-block:: console
 
@@ -1231,8 +1305,7 @@ introduced |Arguments.enumStringType| method (it returns object
 this new type instead::
 
     parser.addArgument("--lang")
-            .type(Arguments.enumStringType(Lang.class))
-            .choices(Lang.values());
+            .type(Arguments.enumStringType(Lang.class));
 
 Passing ``--lang "C++"`` just works as expected.
 Please note that ``--lang CPP`` no longer works in this case.
@@ -1300,6 +1373,27 @@ that simply check against a range of values::
     prog: error: foo expects value in range [5, 10], inclusive
 
 See :ref:`Argument-choices` for more details.
+
+In some cases, type itself may infer metavar.  In that case, it is
+more convenient to get metavar from type instead of setting metavar
+for each argument.  To achieve this, if
+:javadoc:`inf.MetavarInference` is implemented as well, it can infer
+metavar through its interface method.  We mentioned that special
+handling of ``Boolean.class`` for default metavar in
+:ref:`Argument-metavar` section.  It is implemented using
+:javadoc:`inf.MetavarInference`.  Here is an example of implementation
+of :javadocfunc:`inf.MetavarInference.inferMetavar()` from
+:javadoc:`impl.ReflectArgumentType`::
+
+    @Override
+    public String[] inferMetavar() {
+        if (!Boolean.class.equals(type_)) {
+            return null;
+        }
+
+        return new String[] { TextHelper.concat(
+                new String[] { "true", "false" }, 0, ",", "{", "}") };
+    }
 
 .. _Argument-choices:
 
@@ -1467,6 +1561,12 @@ When :javadoc:`inf.ArgumentParser` generates help messages, it need
 some way to referer to each expected argument. By default,
 :javadoc:`inf.ArgumentParser` objects use the "dest" value (see
 :ref:`Argument-dest` about "dest" value) as the "name" of each object.
+If ``Boolean.class`` is given to |Argument.type|, and if no metavar and
+no choices are set, ``{true,false}`` is used as metavar automatically
+for convenience.
+Similarly, if enum type is given, and if no metavar and no choices are set,
+a metavar containing their all names is automatically used for convenience
+(these names are from ``Enum.names()`` instead of ``Enum.toString()``).
 By default, for positional arguments, the dest value is used directly,
 and for optional arguments, the dest value is uppercased. So, a single
 positional argument with ``dest("bar")`` will be referred to as

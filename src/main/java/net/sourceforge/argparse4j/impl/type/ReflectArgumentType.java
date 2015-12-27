@@ -28,18 +28,27 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import net.sourceforge.argparse4j.helper.TextHelper;
+import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.Argument;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.ArgumentType;
+import net.sourceforge.argparse4j.inf.MetavarInference;
 
 /**
  * <p>
  * This implementation converts String value into given type using type's
  * {@code valueOf(java.lang.String)} static method or its constructor.
+ * 
+ * This class implements {@link MetavarInference} interface, and performs
+ * special handling when {@link Boolean} class is passed to the constructor. In
+ * that case, {@link ReflectArgumentType#inferMetavar()} returns convenient
+ * metavar string for Boolean values, and it is used when
+ * {@link Argument#metavar(String...)} is not used.
  * </p>
  */
-public class ReflectArgumentType<T> implements ArgumentType<T> {
+public class ReflectArgumentType<T> implements ArgumentType<T>,
+        MetavarInference {
 
     private Class<T> type_;
 
@@ -73,7 +82,7 @@ public class ReflectArgumentType<T> implements ArgumentType<T> {
      * application passes enums with toString() overridden with the different
      * value than enum name, it may not work like it expects. To take into
      * account {@link Enum#toString()} on conversion, use
-     * {@link Arguments#enumStringType} instead.
+     * {@link Arguments#enumStringType(Class)} instead.
      * </p>
      * 
      * @param type
@@ -93,7 +102,10 @@ public class ReflectArgumentType<T> implements ArgumentType<T> {
             try {
                 return (T) Enum.valueOf((Class<Enum>) type_, value);
             } catch (IllegalArgumentException e) {
-                throwArgumentParserException(parser, arg, value, e);
+                throw new ArgumentParserException(String.format(
+                        TextHelper.LOCALE_ROOT,
+                        "could not convert '%s' (choose from %s)", value,
+                        inferMetavar()[0]), parser, arg);
             }
         }
         Method m = null;
@@ -152,5 +164,47 @@ public class ReflectArgumentType<T> implements ArgumentType<T> {
 
     private void handleInstatiationError(Exception e) {
         throw new IllegalArgumentException("reflect type conversion error", e);
+    }
+
+    /**
+     * <p>
+     * Infers metavar based on given type.
+     * </p>
+     * <p>
+     * If {@link Boolean} class is passed to constructor, this method returns
+     * metavar string "{true,false}" for convenience.
+     * </p>
+     * <p>
+     * If enum type is passed to constructor, this method returns metavar
+     * containing all enum names defined in that type. This uses
+     * {@link Enum#name()} method, instead of {@link Object#toString()} method.
+     * If you are looking for the latter, consider to use
+     * {@link EnumStringArgumentType}.
+     * </p>
+     * <p>
+     * Otherwise, returns null.
+     * </p>
+     * 
+     * @see net.sourceforge.argparse4j.inf.MetavarInference#inferMetavar()
+     * @since 0.7.0
+     */
+    @Override
+    public String[] inferMetavar() {
+        if (Boolean.class.equals(type_)) {
+            return new String[] { TextHelper.concat(new String[] { "true",
+                    "false" }, 0, ",", "{", "}") };
+        }
+
+        if (type_.isEnum()) {
+            T[] enumConstants = type_.getEnumConstants();
+            String[] names = new String[enumConstants.length];
+            int i = 0;
+            for (T t : enumConstants) {
+                names[i++] = ((Enum<?>) t).name();
+            }
+            return new String[] { TextHelper.concat(names, 0, ",", "{", "}") };
+        }
+
+        return null;
     }
 }

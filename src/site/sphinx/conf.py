@@ -39,7 +39,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'argparse4j'
-copyright = u'2011, 2014, Tatsuhiro Tsujikawa'
+copyright = u'2011, 2015, Tatsuhiro Tsujikawa'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -267,7 +267,7 @@ def _ap4j_javadocfunc_role(name, rawtext, text, lineno, inliner, options={},
                                     funcsig.split('(', 1)[0],
                                     '()']),
                            refuri='#'.join([_ap4j_javadoc_genuri(type_text),
-                                            funcsig]),
+                                            re.sub(r'\(|\)', '-', funcsig)]),
                            **options)
 
     lit = _ap4j_genliteral(rawtext, "")
