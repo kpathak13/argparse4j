@@ -1583,7 +1583,7 @@ public final class ArgumentParserImpl implements ArgumentParser {
                 throw new IllegalArgumentException(
                         String.format(
                                 TextHelper.LOCALE_ROOT,
-                                "invalid option string '%s': must starti wht a character '%s'",
+                                "invalid option string '%s': must start with a character '%s'",
                                 flag, prefixPattern_.getPrefixChars()));
             }
             ArgumentImpl another = optargIndex_.get(flag);

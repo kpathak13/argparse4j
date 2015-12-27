@@ -198,7 +198,7 @@ public interface ArgumentParser {
      * <p>
      * If deprecatedHelp is {@code true}, deprecated arguments are printed in
      * the help message.
-     * <p>
+     * </p>
      * <p>
      * By default, the deprecated arguments are not printed in help message.
      * </p>

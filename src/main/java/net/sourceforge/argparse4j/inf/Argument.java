@@ -285,10 +285,13 @@ public interface Argument {
     Argument metavar(String... metavar);
 
     /**
+     * <p>
      * Set the argument as deprecated.
-     * 
+     * </p>
+     * <p>
      * Deprecated arguments function as normal arguments, but will be shown as
      * deprecated in the help.
+     * </p>
      * 
      * @param deprecated
      *            {@code true} or {@code false}
@@ -297,10 +300,13 @@ public interface Argument {
     Argument deprecated(boolean deprecated);
 
     /**
+     * <p>
      * Set the list of deprecated aliases.
-     * 
+     * </p>
+     * <p>
      * Deprecated aliases function as normal argument aliases, but will be shown
      * as deprecated in the help.
+     * </p>
      * 
      * @param flags
      *            A list of option strings that are deprecated.

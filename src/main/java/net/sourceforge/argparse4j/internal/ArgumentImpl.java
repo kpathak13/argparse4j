@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -420,7 +421,7 @@ public final class ArgumentImpl implements Argument {
 
     @Override
     public ArgumentImpl required(boolean required) {
-        if (deprecated_) {
+        if (deprecated_ && required) {
             throw new IllegalArgumentException(
                     "deprecated arguments cannot be required");
         }
@@ -591,9 +592,7 @@ public final class ArgumentImpl implements Argument {
     public Argument deprecatedAliases(String... flagAliases) {
         checkDeprecationRequirements();
         parser_.addDeprecatedAlias(this, flagAliases);
-        for (String flag : flagAliases) {
-            deprecatedAliases_.add(flag);
-        }
+        Collections.addAll(deprecatedAliases_, flagAliases);
         return this;
     }
 
